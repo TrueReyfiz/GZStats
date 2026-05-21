@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPerfil, getPartidas } from '../services/api'
 
@@ -10,6 +10,9 @@ const TIER_COLOR = {
   GRANDMASTER: 'text-red-400',   CHALLENGER: 'text-yellow-300',
   UNRANKED: 'text-slate-500',
 }
+
+const ROTAS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']
+const ROTA_LABEL = { TOP: 'Top', JUNGLE: 'JG', MIDDLE: 'Mid', BOTTOM: 'Bot', UTILITY: 'Sup' }
 
 function StatCard({ label, value, color = 'text-white', sub }) {
   return (
@@ -39,8 +42,22 @@ function formatDate(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) +
-         ' ' +
-         d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+         ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+function FilterBtn({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
+        active
+          ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30'
+          : 'text-slate-400 border-white/10 hover:border-white/20'
+      }`}
+    >
+      {children}
+    </button>
+  )
 }
 
 export default function Perfil() {
@@ -50,6 +67,11 @@ export default function Perfil() {
   const [partidas, setPartidas] = useState([])
   const [loading,  setLoading]  = useState(true)
 
+  // Filtros
+  const [resultado, setResultado] = useState('todos')   // todos | vitoria | derrota
+  const [rotaFil,   setRotaFil]   = useState('todas')   // todas | TOP | JUNGLE | ...
+  const [campBusca, setCampBusca] = useState('')
+
   useEffect(() => {
     Promise.all([getPerfil(puuid), getPartidas(puuid)])
       .then(([p, m]) => { setPerfil(p.data); setPartidas(m.data) })
@@ -57,11 +79,36 @@ export default function Perfil() {
       .finally(() => setLoading(false))
   }, [puuid])
 
+  const partidasFiltradas = useMemo(() => {
+    return partidas.filter(p => {
+      if (resultado === 'vitoria'  && !p.vitoria)  return false
+      if (resultado === 'derrota'  &&  p.vitoria)  return false
+      if (rotaFil !== 'todas'      && p.rota !== rotaFil) return false
+      if (campBusca && !p.campeao?.toLowerCase().includes(campBusca.toLowerCase())) return false
+      return true
+    })
+  }, [partidas, resultado, rotaFil, campBusca])
+
+  // Campeões únicos para sugestão
+  const campeoes = useMemo(() =>
+    [...new Set(partidas.map(p => p.campeao).filter(Boolean))].sort(),
+    [partidas]
+  )
+
+  // Rotas que o jogador realmente jogou
+  const rotasUsadas = useMemo(() =>
+    new Set(partidas.map(p => p.rota).filter(Boolean)),
+    [partidas]
+  )
+
   if (loading) return <div className="text-center py-20 text-slate-500">Carregando perfil...</div>
   if (!perfil)  return <div className="text-center py-20 text-red-400">Jogador não encontrado.</div>
 
-  const s          = perfil.stats_medios
-  const tierColor  = TIER_COLOR[perfil.tier] ?? 'text-slate-400'
+  const s         = perfil.stats_medios
+  const tierColor = TIER_COLOR[perfil.tier] ?? 'text-slate-400'
+
+  const vitoriasFiltradas = partidasFiltradas.filter(p => p.vitoria).length
+  const derrotasFiltradas = partidasFiltradas.length - vitoriasFiltradas
 
   return (
     <div className="py-8">
@@ -75,11 +122,12 @@ export default function Perfil() {
       {/* ── Header ── */}
       <div className="bg-[#0d1117] border border-white/5 rounded-lg p-6 mb-6">
         <div className="flex gap-4 items-center">
-          <div className={`w-14 h-14 rounded-full bg-white/5 border-2 flex items-center justify-center font-bold text-xl ${tierColor}`}
-               style={{ borderColor: 'currentColor' }}>
+          <div
+            className={`w-14 h-14 rounded-full bg-white/5 border-2 flex items-center justify-center font-bold text-xl ${tierColor}`}
+            style={{ borderColor: 'currentColor' }}
+          >
             {perfil.riot_id?.[0]}
           </div>
-
           <div className="flex-1">
             <div className="text-xl font-bold text-white">
               {perfil.riot_id}
@@ -92,7 +140,6 @@ export default function Perfil() {
               {perfil.wins}V {perfil.losses}D · {perfil.winrate_geral}% WR geral
             </div>
           </div>
-
           {perfil.hot_streak && (
             <div className="text-orange-400 text-sm font-semibold">🔥 Em sequência!</div>
           )}
@@ -103,32 +150,22 @@ export default function Perfil() {
       {s ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-            <StatCard
-              label="KDA Médio" value={s.kda_medio} color="text-cyan-400"
-              sub={`últ. ${s.partidas_analisadas} partidas`}
-            />
-            <StatCard label="CS / Min"    value={s.cspm_medio}             color="text-amber-400" />
-            <StatCard label="Dano / Min"  value={Math.round(s.dpm_medio)}  color="text-green-400" />
-            <StatCard
-              label="WR recente" value={`${s.winrate_recente}%`}
+            <StatCard label="KDA Médio"    value={s.kda_medio}                  color="text-cyan-400"  sub={`últ. ${s.partidas_analisadas} partidas`} />
+            <StatCard label="CS / Min"     value={s.cspm_medio}                 color="text-amber-400" />
+            <StatCard label="Dano / Min"   value={Math.round(s.dpm_medio)}      color="text-green-400" />
+            <StatCard label="WR recente"   value={`${s.winrate_recente}%`}
               color={s.winrate_recente >= 50 ? 'text-green-400' : 'text-red-400'}
               sub={`WR geral: ${perfil.winrate_geral}%`}
             />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <StatCard label="Kill Part."   value={`${s.kp_medio}%`}              color="text-purple-400" />
-            <StatCard label="Vision Score" value={s.visao_medio}                 color="text-blue-400" />
-            <StatCard
-              label="GD@15 Médio"
-              value={fmtDiff(s.gd15_medio)}
-              color={diffColor(s.gd15_medio)}
-              sub="ouro vs oponente"
+            <StatCard label="Kill Part."   value={`${s.kp_medio}%`}             color="text-purple-400" />
+            <StatCard label="Vision Score" value={s.visao_medio}                color="text-blue-400" />
+            <StatCard label="GD@15 Médio"  value={fmtDiff(s.gd15_medio)}
+              color={diffColor(s.gd15_medio)} sub="ouro vs oponente"
             />
-            <StatCard
-              label="CSD@15"
-              value={fmtDiff(s.csd15_medio, 1)}
-              color={diffColor(s.csd15_medio)}
-              sub="CS vs oponente"
+            <StatCard label="CSD@15"       value={fmtDiff(s.csd15_medio, 1)}
+              color={diffColor(s.csd15_medio)} sub="CS vs oponente"
             />
           </div>
         </>
@@ -138,37 +175,96 @@ export default function Perfil() {
         </div>
       )}
 
+      {/* ── Filtros do Histórico ── */}
+      <div className="bg-[#0d1117] border border-white/5 rounded-lg p-4 mb-2 flex flex-col gap-3">
+
+        {/* Busca por campeão */}
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="Buscar campeão..."
+            value={campBusca}
+            onChange={e => setCampBusca(e.target.value)}
+            list="camp-list"
+            className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400/50 transition-colors"
+          />
+          <datalist id="camp-list">
+            {campeoes.map(c => <option key={c} value={c} />)}
+          </datalist>
+          {campBusca && (
+            <button onClick={() => setCampBusca('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
+              ✕
+            </button>
+          )}
+        </div>
+
+        <div className="flex flex-wrap gap-4">
+          {/* Resultado */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 uppercase tracking-widest">Resultado</span>
+            <div className="flex gap-1">
+              <FilterBtn active={resultado === 'todos'}   onClick={() => setResultado('todos')}>Todos</FilterBtn>
+              <FilterBtn active={resultado === 'vitoria'} onClick={() => setResultado('vitoria')}>✅ Vitórias</FilterBtn>
+              <FilterBtn active={resultado === 'derrota'} onClick={() => setResultado('derrota')}>❌ Derrotas</FilterBtn>
+            </div>
+          </div>
+
+          {/* Rota */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs text-slate-500 uppercase tracking-widest">Rota</span>
+            <div className="flex gap-1 flex-wrap">
+              <FilterBtn active={rotaFil === 'todas'} onClick={() => setRotaFil('todas')}>Todas</FilterBtn>
+              {ROTAS.filter(r => rotasUsadas.has(r)).map(r => (
+                <FilterBtn key={r} active={rotaFil === r} onClick={() => setRotaFil(r)}>
+                  {ROTA_LABEL[r]}
+                </FilterBtn>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Histórico ── */}
       <div className="bg-[#0d1117] border border-white/5 rounded-lg overflow-hidden">
         <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
           <span className="text-xs uppercase tracking-widest text-slate-500">Histórico de Partidas</span>
-          <span className="text-xs text-slate-600">{partidas.length} registradas</span>
+          <span className="text-xs text-slate-600">
+            {partidasFiltradas.length} partidas ·{' '}
+            <span className="text-green-400">{vitoriasFiltradas}V</span>
+            {' / '}
+            <span className="text-red-400">{derrotasFiltradas}D</span>
+            {partidasFiltradas.length > 0 && (
+              <span className="text-slate-500">
+                {' '}· {Math.round(vitoriasFiltradas / partidasFiltradas.length * 100)}% WR
+              </span>
+            )}
+          </span>
         </div>
 
-        {partidas.length === 0 && (
+        {partidasFiltradas.length === 0 && (
           <div className="px-4 py-8 text-center text-slate-600 text-sm">
-            Nenhuma partida registrada.
+            Nenhuma partida com esses filtros.
           </div>
         )}
 
-        {partidas.slice(0, 20).map(p => (
+        {partidasFiltradas.slice(0, 30).map(p => (
           <div
             key={p.match_id}
             className="flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/[0.03] transition-colors"
           >
-            {/* Barra vitória/derrota */}
             <div className={`w-1 h-12 rounded-full flex-shrink-0 ${p.vitoria ? 'bg-green-400' : 'bg-red-400'}`} />
 
-            {/* Campeão */}
             <div className="w-9 h-9 rounded bg-white/5 flex items-center justify-center text-xs font-bold text-amber-400 flex-shrink-0">
               {p.campeao?.slice(0, 3).toUpperCase()}
             </div>
 
-            {/* Info principal */}
             <div className="flex-1 min-w-0">
               <div className="font-semibold text-white text-sm leading-tight">{p.campeao}</div>
               <div className="text-xs text-slate-500 mt-0.5">
-                {p.rota || '—'} · {p.duracao_min}min
+                {p.rota ? (ROTA_LABEL[p.rota] ?? p.rota) : '—'}
+                {' · '}{p.duracao_min}min
                 {p.data ? ` · ${formatDate(p.data)}` : ''}
               </div>
             </div>
@@ -206,6 +302,12 @@ export default function Perfil() {
             </div>
           </div>
         ))}
+
+        {partidasFiltradas.length > 30 && (
+          <div className="px-4 py-3 text-center text-xs text-slate-600">
+            Mostrando 30 de {partidasFiltradas.length} partidas
+          </div>
+        )}
       </div>
     </div>
   )

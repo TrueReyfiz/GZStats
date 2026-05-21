@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { getComparativo } from '../services/api'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
@@ -12,10 +12,29 @@ const METRICAS = [
   { key: 'gd15',    label: 'GD@15'        },
 ]
 
+// Colunas clicáveis na tabela
+const COLUNAS = [
+  { key: 'riot_id', label: 'Jogador',     align: 'left'   },
+  { key: 'kda',     label: 'KDA',         align: 'center' },
+  { key: 'cspm',    label: 'CS/m',        align: 'center' },
+  { key: 'dpm',     label: 'DPM',         align: 'center' },
+  { key: 'kp',      label: 'KP%',         align: 'center' },
+  { key: 'visao',   label: 'Visão',       align: 'center' },
+  { key: 'winrate', label: 'WR%',         align: 'center' },
+  { key: 'gd15',    label: 'GD@15',       align: 'center' },
+]
+
+function SortIcon({ col, sortCol, sortDir }) {
+  if (sortCol !== col) return <span className="text-slate-700 ml-1">↕</span>
+  return <span className="text-cyan-400 ml-1">{sortDir === 'asc' ? '↑' : '↓'}</span>
+}
+
 export default function Comparativo() {
-  const [dados,   setDados]   = useState([])
-  const [metrica, setMetrica] = useState('kda')
-  const [loading, setLoading] = useState(true)
+  const [dados,    setDados]    = useState([])
+  const [metrica,  setMetrica]  = useState('kda')
+  const [loading,  setLoading]  = useState(true)
+  const [sortCol,  setSortCol]  = useState('kda')
+  const [sortDir,  setSortDir]  = useState('desc')
 
   useEffect(() => {
     getComparativo()
@@ -24,9 +43,33 @@ export default function Comparativo() {
       .finally(() => setLoading(false))
   }, [])
 
+  function handleSort(col) {
+    if (sortCol === col) {
+      setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    } else {
+      setSortCol(col)
+      setSortDir(col === 'riot_id' ? 'asc' : 'desc')
+    }
+  }
+
+  const chartSorted = useMemo(() =>
+    [...dados].sort((a, b) => (b[metrica] ?? 0) - (a[metrica] ?? 0)),
+    [dados, metrica]
+  )
+
+  const tabelaSorted = useMemo(() => {
+    return [...dados].sort((a, b) => {
+      const va = a[sortCol] ?? ''
+      const vb = b[sortCol] ?? ''
+      if (typeof va === 'string') {
+        return sortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va)
+      }
+      return sortDir === 'desc' ? vb - va : va - vb
+    })
+  }, [dados, sortCol, sortDir])
+
   if (loading) return <div className="text-center py-20 text-slate-500">Carregando...</div>
 
-  const sorted      = [...dados].sort((a, b) => (b[metrica] ?? 0) - (a[metrica] ?? 0))
   const maxPartidas = Math.max(...dados.map(d => d.partidas_analisadas || 0), 0)
 
   return (
@@ -40,6 +83,7 @@ export default function Comparativo() {
         </p>
       </div>
 
+      {/* ── Gráfico ── */}
       <div className="bg-[#0d1117] border border-white/5 rounded-lg mb-6">
         <div className="px-4 py-3 border-b border-white/5 text-xs uppercase tracking-widest text-slate-500">
           Selecionar métrica
@@ -62,21 +106,11 @@ export default function Comparativo() {
 
         <div className="p-4 h-72">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={sorted} layout="vertical" margin={{ left: 80 }}>
+            <BarChart data={chartSorted} layout="vertical" margin={{ left: 80 }}>
               <XAxis type="number" tick={{ fill: '#475569', fontSize: 11 }} />
-              <YAxis
-                type="category"
-                dataKey="riot_id"
-                tick={{ fill: '#94a3b8', fontSize: 12 }}
-                width={75}
-              />
+              <YAxis type="category" dataKey="riot_id" tick={{ fill: '#94a3b8', fontSize: 12 }} width={75} />
               <Tooltip
-                contentStyle={{
-                  background: '#0d1117',
-                  border: '1px solid #1e293b',
-                  borderRadius: 6,
-                  fontSize: 12,
-                }}
+                contentStyle={{ background: '#0d1117', border: '1px solid #1e293b', borderRadius: 6, fontSize: 12 }}
                 labelStyle={{ color: '#fff' }}
                 formatter={(value) => [
                   typeof value === 'number' ? value.toLocaleString('pt-BR') : value,
@@ -84,14 +118,10 @@ export default function Comparativo() {
                 ]}
               />
               <Bar dataKey={metrica} radius={[0, 4, 4, 0]}>
-                {sorted.map((_, i) => (
+                {chartSorted.map((_, i) => (
                   <Cell
                     key={i}
-                    fill={
-                      i === 0                  ? '#0bc4e3' :
-                      i === sorted.length - 1  ? '#e84057' :
-                                                 '#334155'
-                    }
+                    fill={i === 0 ? '#0bc4e3' : i === chartSorted.length - 1 ? '#e84057' : '#334155'}
                   />
                 ))}
               </Bar>
@@ -100,35 +130,41 @@ export default function Comparativo() {
         </div>
       </div>
 
-      {/* Tabela resumo */}
+      {/* ── Tabela com ordenação ── */}
       <div className="bg-[#0d1117] border border-white/5 rounded-lg overflow-x-auto">
-        <div className="px-4 py-3 border-b border-white/5 text-xs uppercase tracking-widest text-slate-500">
-          Tabela Completa
+        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
+          <span className="text-xs uppercase tracking-widest text-slate-500">Tabela Completa</span>
+          <span className="text-xs text-slate-600">Clique no cabeçalho para ordenar</span>
         </div>
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5 text-xs text-slate-500 uppercase tracking-widest">
-              <th className="py-2 px-4 text-left">Jogador</th>
-              <th className="py-2 px-4 text-center">KDA</th>
-              <th className="py-2 px-4 text-center">CS/m</th>
-              <th className="py-2 px-4 text-center">DPM</th>
-              <th className="py-2 px-4 text-center">KP%</th>
-              <th className="py-2 px-4 text-center">Visão</th>
-              <th className="py-2 px-4 text-center">WR%</th>
-              <th className="py-2 px-4 text-center">GD@15</th>
+            <tr className="border-b border-white/5 text-xs text-slate-500 uppercase tracking-widest select-none">
+              {COLUNAS.map(col => (
+                <th
+                  key={col.key}
+                  className={`py-2 px-4 text-${col.align} cursor-pointer hover:text-slate-300 transition-colors`}
+                  onClick={() => handleSort(col.key)}
+                >
+                  {col.label}
+                  <SortIcon col={col.key} sortCol={sortCol} sortDir={sortDir} />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {dados.map(d => (
-              <tr key={d.puuid} className="border-b border-white/5 hover:bg-white/[0.03]">
-                <td className="py-2 px-4 font-semibold text-white">{d.riot_id}</td>
-                <td className="py-2 px-4 text-center text-cyan-400 font-bold">{d.kda}</td>
+            {tabelaSorted.map((d) => (
+              <tr key={d.puuid} className="border-b border-white/5 hover:bg-white/[0.03] transition-colors">
+                <td className="py-2 px-4">
+                  <div className="font-semibold text-white">{d.riot_id}</div>
+                  <div className="text-xs text-slate-600">{d.tier} {d.rank}</div>
+                </td>
+                <td className="py-2 px-4 text-center font-bold text-cyan-400">{d.kda}</td>
                 <td className="py-2 px-4 text-center text-amber-400">{d.cspm}</td>
                 <td className="py-2 px-4 text-center text-green-400">{Math.round(d.dpm)}</td>
                 <td className="py-2 px-4 text-center text-purple-400">{d.kp}%</td>
                 <td className="py-2 px-4 text-center text-blue-400">{d.visao}</td>
                 <td className="py-2 px-4 text-center">
-                  <span className={d.winrate >= 50 ? 'text-green-400' : 'text-red-400'}>
+                  <span className={d.winrate >= 50 ? 'text-green-400 font-bold' : 'text-red-400'}>
                     {d.winrate}%
                   </span>
                 </td>
