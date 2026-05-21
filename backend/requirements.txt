@@ -4,4 +4,4 @@ riotwatcher
 sqlalchemy
 python-dotenv
 apscheduler
-# psycopg2-binary
+psycopg2-binary

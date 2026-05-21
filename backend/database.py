@@ -8,6 +8,11 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./gzstats.db")
 
+# Render fornece "postgres://" mas SQLAlchemy 1.4+ exige "postgresql://"
+# Sem essa correção, o app cai silenciosamente para SQLite (que some a cada restart)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # SQLite precisa desse argumento extra
 connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
 
