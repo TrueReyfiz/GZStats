@@ -1,14 +1,18 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from database import get_db, SessionLocal
-from models import Jogador, StatsPartida, HistoricoLP
+from models import Jogador, StatsPartida, HistoricoLP, HistoricoStats
 from scheduler import atualizar_jogador
 from utils import elo_score, lp_absoluto
+from datetime import datetime, timedelta
 
 router = APIRouter(prefix="/stats", tags=["stats"])
 
 STATS_LIMIT = 50
 
+
+# ─── Sincronização manual ────────────────────────────────────────────────────
 
 @router.post("/sincronizar")
 def sincronizar_todos():
@@ -27,6 +31,8 @@ def sincronizar_todos():
         db.close()
     return {"sincronizados": len(resultados), "detalhes": resultados}
 
+
+# ─── Comparativo instantâneo ─────────────────────────────────────────────────
 
 @router.get("/comparativo")
 def comparativo(db: Session = Depends(get_db)):
@@ -65,7 +71,6 @@ def comparativo(db: Session = Depends(get_db)):
             "partidas_analisadas": n,
         })
 
-    # Ordenar corretamente: Tier > Rank > LP
     resultado.sort(
         key=lambda x: elo_score(x["tier"], x["rank"], x["lp"]),
         reverse=True
@@ -73,13 +78,19 @@ def comparativo(db: Session = Depends(get_db)):
     return resultado
 
 
+# ─── Evolução de LP ──────────────────────────────────────────────────────────
+
 @router.get("/evolucao/{puuid}")
-def evolucao_lp(puuid: str, db: Session = Depends(get_db)):
-    """Histórico de LP — com LP absoluto para gráfico de progressão real"""
-    historico = db.query(HistoricoLP)\
-        .filter(HistoricoLP.puuid == puuid)\
-        .order_by(HistoricoLP.registrado_em.asc())\
-        .all()
+def evolucao_lp(puuid: str, dias: int = Query(default=0, ge=0), db: Session = Depends(get_db)):
+    """
+    Histórico de LP — com LP absoluto para gráfico de progressão real.
+    dias=0 → tudo; dias=7 → últimos 7 dias; dias=30 → últimos 30 dias
+    """
+    q = db.query(HistoricoLP).filter(HistoricoLP.puuid == puuid)
+    if dias > 0:
+        corte = datetime.utcnow() - timedelta(days=dias)
+        q = q.filter(HistoricoLP.registrado_em >= corte)
+    historico = q.order_by(HistoricoLP.registrado_em.asc()).all()
 
     return [{
         "lp":            h.lp,
@@ -89,6 +100,84 @@ def evolucao_lp(puuid: str, db: Session = Depends(get_db)):
         "registrado_em": h.registrado_em.isoformat() if h.registrado_em else None,
     } for h in historico]
 
+
+# ─── Evolução de Stats (linha do tempo) ──────────────────────────────────────
+
+@router.get("/evolucao-stats/{puuid}")
+def evolucao_stats(puuid: str, dias: int = Query(default=0, ge=0), db: Session = Depends(get_db)):
+    """
+    Linha do tempo de stats de um jogador (snapshots diários).
+    Retorna KDA, CS/m, DPM, Visão, KP%, WR, GD@15, XPD@15, CSD@15 ao longo do tempo.
+    dias=0 → tudo; dias=7 → últimos 7 dias; dias=30 → últimos 30 dias
+    """
+    q = db.query(HistoricoStats).filter(HistoricoStats.puuid == puuid)
+    if dias > 0:
+        corte = datetime.utcnow() - timedelta(days=dias)
+        q = q.filter(HistoricoStats.registrado_em >= corte)
+    historico = q.order_by(HistoricoStats.registrado_em.asc()).all()
+
+    return [{
+        "registrado_em": h.registrado_em.isoformat() if h.registrado_em else None,
+        "tier":          h.tier,
+        "rank":          h.rank,
+        "lp":            h.lp,
+        "kda":           h.kda,
+        "cspm":          h.cspm,
+        "dpm":           h.dpm,
+        "visao":         h.visao,
+        "kp":            h.kp,
+        "winrate":       h.winrate,
+        "gd15":          h.gd15,
+        "xpd15":         h.xpd15,
+        "csd15":         h.csd15,
+        "partidas":      h.partidas,
+    } for h in historico]
+
+
+@router.get("/evolucao-time")
+def evolucao_time(dias: int = Query(default=30, ge=0), db: Session = Depends(get_db)):
+    """
+    Médias diárias do TIME — agrega os snapshots de todos os jogadores por data.
+    Útil para ver se o time como um todo está melhorando.
+    dias=0 → tudo; padrão 30 dias.
+    """
+    q = db.query(HistoricoStats)
+    if dias > 0:
+        corte = datetime.utcnow() - timedelta(days=dias)
+        q = q.filter(HistoricoStats.registrado_em >= corte)
+    todos = q.order_by(HistoricoStats.registrado_em.asc()).all()
+
+    # Agrupar por data (dia)
+    por_dia: dict[str, list] = {}
+    for h in todos:
+        dia = h.registrado_em.date().isoformat() if h.registrado_em else "?"
+        por_dia.setdefault(dia, []).append(h)
+
+    resultado = []
+    for dia, snaps in sorted(por_dia.items()):
+        n = len(snaps)
+        gd15_v  = [s.gd15  for s in snaps if s.gd15  is not None]
+        xpd15_v = [s.xpd15 for s in snaps if s.xpd15 is not None]
+        csd15_v = [s.csd15 for s in snaps if s.csd15 is not None]
+
+        resultado.append({
+            "data":     dia,
+            "jogadores": n,
+            "kda":      round(sum(s.kda     for s in snaps) / n, 2),
+            "cspm":     round(sum(s.cspm    for s in snaps) / n, 2),
+            "dpm":      round(sum(s.dpm     for s in snaps) / n, 1),
+            "visao":    round(sum(s.visao   for s in snaps) / n, 2),
+            "kp":       round(sum(s.kp      for s in snaps) / n, 1),
+            "winrate":  round(sum(s.winrate for s in snaps) / n, 1),
+            "gd15":     round(sum(gd15_v)   / len(gd15_v),  1) if gd15_v  else None,
+            "xpd15":    round(sum(xpd15_v)  / len(xpd15_v), 1) if xpd15_v else None,
+            "csd15":    round(sum(csd15_v)  / len(csd15_v), 1) if csd15_v else None,
+        })
+
+    return resultado
+
+
+# ─── Alertas ─────────────────────────────────────────────────────────────────
 
 @router.get("/alertas")
 def alertas(db: Session = Depends(get_db)):
@@ -105,7 +194,6 @@ def alertas(db: Session = Depends(get_db)):
         if len(stats) < 3:
             continue
 
-        # Hot streak da API Riot
         if j.hot_streak:
             alertas_lista.append({
                 "tipo":     "hot_streak",
@@ -113,7 +201,6 @@ def alertas(db: Session = Depends(get_db)):
                 "mensagem": f"{j.riot_id} está em sequência de vitórias!",
             })
 
-        # Contar derrotas consecutivas exatas
         streak_derrota = 0
         for s in stats:
             if not s.vitoria:

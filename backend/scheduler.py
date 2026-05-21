@@ -1,12 +1,14 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from sqlalchemy.orm import Session
 from database import SessionLocal
-from models import Jogador, Partida, StatsPartida, HistoricoLP
+from models import Jogador, Partida, StatsPartida, HistoricoLP, HistoricoStats
 import riot_client as rc
 import json
-from datetime import datetime
+from datetime import datetime, date
 
 scheduler = BackgroundScheduler()
+
+STATS_LIMIT = 50  # partidas usadas para calcular médias do snapshot
 
 
 def atualizar_todos():
@@ -25,6 +27,55 @@ def atualizar_todos():
     print(f"[{datetime.now()}] Atualização concluída.")
 
 
+def _salvar_snapshot_stats(db: Session, jogador: Jogador):
+    """
+    Salva um HistoricoStats com as médias das últimas 50 partidas.
+    Só salva uma vez por dia — se já existe snapshot de hoje, ignora.
+    """
+    hoje_inicio = datetime.combine(date.today(), datetime.min.time())
+    ja_tem = db.query(HistoricoStats).filter(
+        HistoricoStats.puuid == jogador.puuid,
+        HistoricoStats.registrado_em >= hoje_inicio
+    ).first()
+    if ja_tem:
+        return  # já salvou hoje
+
+    stats_recentes = db.query(StatsPartida)\
+        .filter(StatsPartida.puuid == jogador.puuid)\
+        .order_by(StatsPartida.id.desc())\
+        .limit(STATS_LIMIT).all()
+
+    if not stats_recentes:
+        return  # sem dados ainda
+
+    n = len(stats_recentes)
+    kda_list      = [(s.kills + s.assists) / max(s.deaths, 1) for s in stats_recentes]
+    gd15_validos  = [s.gd15  for s in stats_recentes if s.gd15  is not None]
+    xpd15_validos = [s.xpd15 for s in stats_recentes if s.xpd15 is not None]
+    csd15_validos = [s.csd15 for s in stats_recentes if s.csd15 is not None]
+    total_jogos   = jogador.wins + jogador.losses
+
+    snapshot = HistoricoStats(
+        puuid    = jogador.puuid,
+        tier     = jogador.tier,
+        rank     = jogador.rank,
+        lp       = jogador.lp,
+        kda      = round(sum(kda_list) / n, 2),
+        cspm     = round(sum(s.cs / max(s.duracao_min, 1) for s in stats_recentes) / n, 2),
+        dpm      = round(sum(s.dano_por_min for s in stats_recentes) / n, 1),
+        visao    = round(sum(s.visao for s in stats_recentes) / n, 2),
+        kp       = round(sum(s.kill_participation for s in stats_recentes) / n, 1),
+        winrate  = round(jogador.wins / total_jogos * 100, 1) if total_jogos > 0 else 0,
+        gd15     = round(sum(gd15_validos)  / len(gd15_validos),  1) if gd15_validos  else None,
+        xpd15    = round(sum(xpd15_validos) / len(xpd15_validos), 1) if xpd15_validos else None,
+        csd15    = round(sum(csd15_validos) / len(csd15_validos), 1) if csd15_validos else None,
+        partidas = n,
+    )
+    db.add(snapshot)
+    db.commit()
+    print(f"  [{jogador.riot_id}] snapshot de stats salvo — {n} partidas analisadas")
+
+
 def atualizar_jogador(db: Session, jogador: Jogador):
     """Atualiza rank e busca partidas novas de um jogador"""
     # 1. Atualizar rank
@@ -38,14 +89,14 @@ def atualizar_jogador(db: Session, jogador: Jogador):
         jogador.losses     = flex["losses"]
         jogador.hot_streak = flex["hotStreak"]
 
-        # Salvar snapshot de LP
-        snapshot = HistoricoLP(
+        # Salvar snapshot de LP (toda atualização)
+        snapshot_lp = HistoricoLP(
             puuid=jogador.puuid,
             lp=flex["leaguePoints"],
             tier=flex["tier"],
             rank=flex["rank"]
         )
-        db.add(snapshot)
+        db.add(snapshot_lp)
 
     db.commit()
 
@@ -63,7 +114,6 @@ def atualizar_jogador(db: Session, jogador: Jogador):
         try:
             # Buscar dados da partida da API (ou reusar do banco se já existir)
             if mid in ids_no_banco:
-                from sqlalchemy.orm import Session
                 partida_existente = db.query(Partida).filter(Partida.match_id == mid).first()
                 match = json.loads(partida_existente.raw_json)
             else:
@@ -92,7 +142,7 @@ def atualizar_jogador(db: Session, jogador: Jogador):
             if not meu_part:
                 continue
 
-            meu_pid  = meu_part["participantId"]
+            meu_pid    = meu_part["participantId"]
             minha_rota = meu_part.get("teamPosition", "")
             meu_time   = meu_part.get("teamId")
 
@@ -137,6 +187,12 @@ def atualizar_jogador(db: Session, jogador: Jogador):
         except Exception as e:
             print(f"Erro ao processar partida {mid}: {e}")
             db.rollback()
+
+    # 3. Snapshot diário de stats (1x por dia)
+    try:
+        _salvar_snapshot_stats(db, jogador)
+    except Exception as e:
+        print(f"Erro ao salvar snapshot de stats de {jogador.riot_id}: {e}")
 
 
 def iniciar_scheduler():

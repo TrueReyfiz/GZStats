@@ -2,6 +2,8 @@ from sqlalchemy import Column, String, Integer, Boolean, Float, DateTime, Text
 from sqlalchemy.sql import func
 from database import Base
 
+
+
 class Jogador(Base):
     __tablename__ = "jogadores"
 
@@ -60,3 +62,27 @@ class HistoricoLP(Base):
     tier         = Column(String)
     rank         = Column(String)
     registrado_em = Column(DateTime, server_default=func.now())
+
+
+class HistoricoStats(Base):
+    """Snapshot diário das médias de cada jogador — base para análise de evolução do time"""
+    __tablename__ = "historico_stats"
+
+    id            = Column(Integer, primary_key=True, index=True)
+    puuid         = Column(String, index=True)
+    registrado_em = Column(DateTime, server_default=func.now())
+    # Elo no momento do snapshot
+    tier          = Column(String)
+    rank          = Column(String)
+    lp            = Column(Integer, default=0)
+    # Médias das últimas 50 partidas naquele momento
+    kda           = Column(Float, default=0)
+    cspm          = Column(Float, default=0)
+    dpm           = Column(Float, default=0)
+    visao         = Column(Float, default=0)
+    kp            = Column(Float, default=0)
+    winrate       = Column(Float, default=0)
+    gd15          = Column(Float, nullable=True)
+    xpd15         = Column(Float, nullable=True)
+    csd15         = Column(Float, nullable=True)
+    partidas      = Column(Integer, default=0)   # qtd de partidas usadas no cálculo
