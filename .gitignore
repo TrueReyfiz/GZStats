@@ -1,0 +1,23 @@
+# Chave da API — NUNCA subir
+backend/.env
+
+# Ambiente virtual Python
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Dependências Node
+frontend/node_modules/
+
+# Build do React
+frontend/dist/
+frontend/.env.local
+
+# Banco local
+backend/*.db
+backend/*.dbSD
+
+# Sistema
+.DS_Store
+Thumbs.db
