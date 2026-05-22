@@ -1,27 +1,48 @@
 import { NavLink } from 'react-router-dom'
 
-export default function Navbar() {
-  const link = ({ isActive }) =>
-    `px-4 py-1.5 text-xs font-medium uppercase tracking-widest rounded transition-all border ${
-      isActive
-        ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30'
-        : 'text-slate-400 border-transparent hover:text-slate-200 hover:bg-white/5'
-    }`
+const NAV = [
+  { to: '/',             label: 'Resenha',          end: true },
+  { to: '/comparativo',  label: 'Comparativo' },
+  { to: '/evolucao',     label: 'Evolução' },
+  { to: '/vergonha',     label: 'Hall da Vergonha' },
+]
 
+const linkBase = 'px-4 py-2 rounded-full text-[13px] font-extrabold border-2 transition-all whitespace-nowrap'
+const linkActive = 'bg-banana text-bg-0 border-bg-0 shadow-pill'
+const linkIdle = 'text-warm-3 border-transparent hover:text-cream hover:bg-bg-1'
+
+export default function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 h-14 flex items-center px-6 gap-6 bg-[#080b10]/90 backdrop-blur border-b border-white/5">
-      <span className="font-bold text-sm tracking-widest text-amber-400 mr-2">
-        ⚔️ GZ<span className="text-cyan-400">STATS</span>
-      </span>
-      <div className="flex gap-1">
-        <NavLink to="/"             className={link}>Ranking</NavLink>
-        <NavLink to="/comparativo"  className={link}>Comparativo</NavLink>
-        <NavLink to="/evolucao"     className={link}>Evolução</NavLink>
+    <header className="sticky top-0 z-50 flex items-center gap-4 px-8 py-4 bg-bg-0 border-b-2 border-dashed gz-divider-dashed">
+      <NavLink to="/" className="flex items-center gap-3 no-underline">
+        <img src="/mascot-gorilla.svg" alt="Gorilla mascot" className="w-11 h-11"/>
+        <div>
+          <div className="font-display text-[22px] text-banana tracking-[1px] leading-none whitespace-nowrap">
+            GORILLAZ <span className="text-cream">HUB</span>
+          </div>
+          <div className="text-[11px] text-warm-4 font-bold tracking-[0.5px] mt-1">
+            A resenha do squad · BR1 Flex
+          </div>
+        </div>
+      </NavLink>
+
+      <nav className="flex gap-1.5 ml-6">
+        {NAV.map(l => (
+          <NavLink
+            key={l.to}
+            to={l.to}
+            end={l.end}
+            className={({ isActive }) => `${linkBase} ${isActive ? linkActive : linkIdle}`}
+          >
+            {l.label}
+          </NavLink>
+        ))}
+      </nav>
+
+      <div className="ml-auto flex items-center gap-3 text-xs text-warm-3 font-bold whitespace-nowrap">
+        <span className="gz-live-dot w-2.5 h-2.5 rounded-full animate-bounce"/>
+        <span>squad online</span>
       </div>
-      <span className="ml-auto text-xs text-green-400 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"/>
-        Online
-      </span>
-    </nav>
+    </header>
   )
 }
