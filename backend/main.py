@@ -33,3 +33,21 @@ def startup():
 @app.get("/")
 def root():
     return {"app": "GZStats", "status": "online", "docs": "/docs"}
+
+
+@app.get("/health")
+def health():
+    """Diagnóstico: mostra qual banco está sendo usado"""
+    from database import DATABASE_URL
+    import os
+    db_type = "postgresql" if "postgresql" in DATABASE_URL else "sqlite"
+    db_hint  = DATABASE_URL[:30] + "..." if len(DATABASE_URL) > 30 else DATABASE_URL
+    # Mascarar credenciais
+    if "@" in DATABASE_URL:
+        db_hint = "postgresql://***@" + DATABASE_URL.split("@", 1)[1][:20] + "..."
+    return {
+        "status":  "online",
+        "db_type": db_type,
+        "db_url":  db_hint,
+        "db_url_env_set": bool(os.getenv("DATABASE_URL")),
+    }
