@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  
+  <defs>
+    <pattern id="diag" width="32" height="32" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="32" stroke="#22d3ee" stroke-opacity="0.08" stroke-width="1"></line>
+    </pattern>
+  </defs>
+  <rect width="400" height="400" fill="#0d1117"></rect>
+  <rect width="400" height="400" fill="url(#diag)"></rect>
+  <g stroke="#22d3ee" stroke-opacity="0.15" stroke-width="1" fill="none">
+    <path d="M 60 120 L 80 100 L 100 120"></path>
+    <path d="M 60 140 L 80 120 L 100 140"></path>
+    <path d="M 300 280 L 320 260 L 340 280"></path>
+    <path d="M 300 300 L 320 280 L 340 300"></path>
+  </g>
+</svg>

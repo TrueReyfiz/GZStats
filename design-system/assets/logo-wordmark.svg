@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none">
+  
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde047"></stop>
+      <stop offset="1" stop-color="#c89b3c"></stop>
+    </linearGradient>
+  </defs>
+
+  
+  <path d="M 12 16 L 4 40 L 12 64" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+  
+  <path d="M 308 16 L 316 40 L 308 64" stroke="#22d3ee" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
+
+  
+  <text x="28" y="36" font-family="&#39;Chakra Petch&#39;, sans-serif" font-weight="700" font-size="22" letter-spacing="2" fill="url(#gold)">GORILLAZ</text>
+  
+  <text x="28" y="64" font-family="&#39;Chakra Petch&#39;, sans-serif" font-weight="700" font-size="30" letter-spacing="6" fill="#22d3ee">HUB</text>
+
+  
+  <g transform="translate(155, 42)">
+    <rect x="0" y="14" width="4" height="8" fill="#22d3ee" opacity="0.4" rx="1"></rect>
+    <rect x="6" y="8" width="4" height="14" fill="#22d3ee" opacity="0.65" rx="1"></rect>
+    <rect x="12" y="2" width="4" height="20" fill="#22d3ee" rx="1"></rect>
+  </g>
+
+  
+  <text x="180" y="62" font-family="&#39;Inter&#39;, sans-serif" font-weight="500" font-size="9" letter-spacing="2" fill="#64748b">SQUAD · LoL · BR1</text>
+</svg>

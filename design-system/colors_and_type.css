@@ -1,0 +1,218 @@
+/* ============================================================
+   Gorillaz Hub — Colors & Typography
+   Dark esports HUD aesthetic with cyan primary, gold secondary,
+   violet team-metric accent. Tone: friendly squad-room "resenha".
+   ============================================================ */
+
+/* Web fonts — Google Fonts substitutions (no proprietary fonts
+   were defined in the source repo; flagged in README). */
+@import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+:root {
+  /* ── BASE PALETTE ───────────────────────────────────────── */
+  /* Backgrounds (deep cosmic blacks with a blue undertone) */
+  --bg-0:           #080b10;   /* page bg — almost-black with blue cast */
+  --bg-1:           #0d1117;   /* card bg / surface 1 */
+  --bg-2:           #131a23;   /* surface 2 — hover / nested cards */
+  --bg-3:           #1b2330;   /* surface 3 — input wells */
+  --bg-elevated:    #0d1117;   /* alias */
+
+  /* Borders & dividers (all sit on dark bgs as low-alpha whites) */
+  --border-faint:   rgba(255,255,255,0.05);  /* default divider */
+  --border-soft:    rgba(255,255,255,0.10);  /* input border */
+  --border-strong:  rgba(255,255,255,0.20);  /* hovered border */
+
+  /* Foreground / type colors */
+  --fg-1:           #ffffff;   /* headline / value */
+  --fg-2:           #ccd6e0;   /* body */
+  --fg-3:           #94a3b8;   /* slate-400 — secondary text */
+  --fg-4:           #64748b;   /* slate-500 — labels / meta */
+  --fg-5:           #475569;   /* slate-600 — tertiary / disabled */
+  --fg-6:           #334155;   /* slate-700 — chart axis */
+
+  /* ── BRAND ACCENTS ──────────────────────────────────────── */
+  --cyan-400:       #22d3ee;   /* PRIMARY brand — squad / actions */
+  --cyan-500:       #0bc4e3;   /* chart fill */
+  --cyan-glow:      rgba(34,211,238,0.10);
+  --cyan-edge:      rgba(34,211,238,0.30);
+
+  --gold-400:       #fbbf24;   /* SECONDARY — LoL-flavored gold / wordmark */
+  --gold-500:       #c89b3c;   /* deeper gold accent */
+  --gold-glow:      rgba(251,191,36,0.10);
+
+  --violet-400:     #a78bfa;   /* TERTIARY — team-wide / aggregate metrics */
+  --violet-glow:    rgba(167,139,250,0.10);
+
+  /* ── SEMANTIC (status / outcomes) ───────────────────────── */
+  --win:            #34d399;   /* victory / good — green-400 */
+  --win-bg:         rgba(52,211,153,0.10);
+  --loss:           #f87171;   /* defeat / bad — red-400 */
+  --loss-bg:        rgba(248,113,113,0.10);
+  --warn:           #fb923c;   /* alerts — orange-400 */
+  --warn-bg:        rgba(251,146,60,0.10);
+  --tilt:           #ef4444;   /* tilt alerts — red-500 */
+  --tilt-bg:        rgba(239,68,68,0.10);
+
+  /* ── LoL TIER COLORS (rank badges) ──────────────────────── */
+  --tier-iron:      #94a3b8;
+  --tier-bronze:    #b45309;
+  --tier-silver:    #cbd5e1;
+  --tier-gold:      #fbbf24;
+  --tier-platinum:  #2dd4bf;
+  --tier-emerald:   #34d399;
+  --tier-diamond:   #60a5fa;
+  --tier-master:    #c084fc;
+  --tier-grandmaster:#ef4444;
+  --tier-challenger:#fde047;
+  --tier-unranked:  #64748b;
+
+  /* ── TYPOGRAPHY ─────────────────────────────────────────── */
+  /* Display: Chakra Petch — condensed esports/techy feel for
+     wordmarks, page titles, big stat numbers. */
+  --font-display:   'Chakra Petch', 'Rajdhani', system-ui, sans-serif;
+  /* Body: Inter — clean readable UI text. */
+  --font-body:      'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Mono: JetBrains Mono — for stats, KDA, LP, code. */
+  --font-mono:      'JetBrains Mono', 'SF Mono', Menlo, monospace;
+
+  /* Type scale */
+  --fs-xs:          11px;
+  --fs-sm:          12px;
+  --fs-body:        14px;
+  --fs-md:          15px;
+  --fs-lg:          18px;
+  --fs-h3:          20px;
+  --fs-h2:          24px;
+  --fs-h1:          32px;
+  --fs-display:     44px;
+
+  /* Tracking — uppercase eyebrow labels use very wide tracking */
+  --track-eyebrow:  0.18em;
+  --track-wide:     0.08em;
+  --track-tight:    -0.01em;
+
+  /* ── SPACING & RADII ────────────────────────────────────── */
+  --r-sm:           4px;
+  --r-md:           6px;
+  --r-lg:           8px;
+  --r-xl:           12px;
+  --r-pill:         9999px;
+
+  --gap-1:          4px;
+  --gap-2:          8px;
+  --gap-3:          12px;
+  --gap-4:          16px;
+  --gap-5:          24px;
+  --gap-6:          32px;
+
+  /* ── SHADOWS / GLOWS ────────────────────────────────────── */
+  --shadow-card:    0 1px 0 rgba(255,255,255,0.03) inset,
+                    0 8px 24px rgba(0,0,0,0.30);
+  --shadow-pop:     0 8px 32px rgba(0,0,0,0.50),
+                    0 0 0 1px rgba(255,255,255,0.05);
+  --glow-cyan:      0 0 0 1px var(--cyan-edge),
+                    0 0 24px -8px var(--cyan-500);
+
+  /* ── ANIMATION ──────────────────────────────────────────── */
+  --t-fast:         120ms;
+  --t-base:         200ms;
+  --t-slow:         320ms;
+  --ease-out:       cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ============================================================
+   SEMANTIC TYPE CLASSES
+   Use these on text elements rather than re-declaring sizes.
+   ============================================================ */
+
+.gh-eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--track-eyebrow);
+  color: var(--fg-4);
+}
+
+.gh-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-h1);
+  line-height: 1.1;
+  letter-spacing: var(--track-tight);
+  color: var(--fg-1);
+}
+
+.gh-h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-h2);
+  line-height: 1.15;
+  letter-spacing: var(--track-tight);
+  color: var(--fg-1);
+}
+
+.gh-h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-h3);
+  line-height: 1.2;
+  color: var(--fg-1);
+}
+
+.gh-body {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--fg-2);
+}
+
+.gh-body-sm {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--fg-3);
+}
+
+.gh-meta {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  color: var(--fg-4);
+  line-height: 1.4;
+}
+
+/* Numeric / stat readouts — always JetBrains Mono so digits align */
+.gh-stat {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-h2);
+  letter-spacing: -0.02em;
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-stat-sm {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: var(--fs-body);
+  color: var(--fg-1);
+  font-variant-numeric: tabular-nums;
+}
+
+.gh-wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* Default body styles applied to the design-system preview shell */
+.gh-root {
+  background: var(--bg-0);
+  color: var(--fg-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  -webkit-font-smoothing: antialiased;
+}

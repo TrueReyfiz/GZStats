@@ -1,0 +1,87 @@
+@import url('https://fonts.googleapis.com/css2?family=Bowlby+One&family=Nunito:wght@400;600;700;800;900&family=DM+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(132, 204, 22, 0.06), transparent 70%),
+    radial-gradient(900px 500px at 100% 10%, rgba(251, 191, 36, 0.05), transparent 70%),
+    #1a1410;
+  color: #fef3c7;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 600;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ────────────────────────────────────────────────
+   Brand patterns that are hard to express purely
+   as Tailwind utility classes.
+   ──────────────────────────────────────────────── */
+
+/* Heading with banana underline on accent word */
+.gz-heading em {
+  font-style: normal;
+  color: #fbbf24;
+  position: relative;
+}
+.gz-heading em::after {
+  content: '';
+  position: absolute;
+  left: -4px; right: -4px; bottom: 2px;
+  height: 8px;
+  background: rgba(251, 191, 36, 0.25);
+  border-radius: 4px;
+  z-index: -1;
+}
+
+/* Dashed dividers (warm tone) */
+.gz-divider-dashed {
+  border-color: rgba(214, 168, 122, 0.20);
+}
+
+/* Tape sticker on resenha cards */
+.gz-tape {
+  position: absolute;
+  top: -10px; right: 20px;
+  width: 80px; height: 22px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  transform: rotate(4deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Comparativo bar shine */
+.gz-bar-fill {
+  position: relative;
+}
+.gz-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 6px; right: 8px;
+  width: 16px; height: 8px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+/* MVP card gradient */
+.gz-card-mvp {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b 60%, #ea580c);
+  color: #1a1410;
+}
+.gz-card-troll {
+  background: linear-gradient(135deg, #1f2937, #111827);
+}
+
+/* Pulsing live-dot */
+.gz-live-dot {
+  background: #84cc16;
+  box-shadow: 0 0 0 4px rgba(132, 204, 22, 0.2);
+}

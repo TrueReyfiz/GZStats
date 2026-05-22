@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#131a23"></stop>
+      <stop offset="1" stop-color="#080b10"></stop>
+    </linearGradient>
+    <linearGradient id="gz-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fde047"></stop>
+      <stop offset="1" stop-color="#c89b3c"></stop>
+    </linearGradient>
+  </defs>
+
+  
+  <rect x="2" y="2" width="76" height="76" rx="14" fill="url(#bg)" stroke="#22d3ee" stroke-opacity="0.3" stroke-width="1.5"></rect>
+
+  
+  <path d="M 10 18 L 10 10 L 18 10" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
+  <path d="M 62 10 L 70 10 L 70 18" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
+  <path d="M 70 62 L 70 70 L 62 70" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
+  <path d="M 18 70 L 10 70 L 10 62" stroke="#22d3ee" stroke-width="1.5" stroke-linecap="round" fill="none"></path>
+
+  
+  <text x="40" y="52" font-family="&#39;Chakra Petch&#39;, sans-serif" font-weight="700" font-size="34" letter-spacing="2" fill="url(#gz-gold)" text-anchor="middle">GZ</text>
+</svg>

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80" fill="none">
+  
+  <defs>
+    <linearGradient id="badge-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2330"></stop>
+      <stop offset="1" stop-color="#0d1117"></stop>
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="38" fill="url(#badge-bg)" stroke="#fbbf24" stroke-width="1.5" stroke-opacity="0.5"></circle>
+
+  
+  <g stroke="#22d3ee" stroke-width="2" stroke-linecap="round" opacity="0.8">
+    <line x1="22" y1="22" x2="58" y2="58"></line>
+    <line x1="58" y1="22" x2="22" y2="58"></line>
+  </g>
+  
+  <circle cx="22" cy="22" r="3" fill="#fbbf24"></circle>
+  <circle cx="58" cy="22" r="3" fill="#fbbf24"></circle>
+
+  
+  <g transform="translate(40, 42)">
+    
+    <path d="M -14 -6 Q -14 -16 -4 -16 Q 0 -19 4 -16 Q 14 -16 14 -6 L 14 10 L -14 10 Z" fill="#0d1117" stroke="#22d3ee" stroke-width="1.5"></path>
+    
+    <circle cx="-5" cy="-6" r="1.6" fill="#fbbf24"></circle>
+    <circle cx="5" cy="-6" r="1.6" fill="#fbbf24"></circle>
+    
+    <ellipse cx="0" cy="2" rx="6" ry="4" fill="#1b2330" stroke="#22d3ee" stroke-width="1"></ellipse>
+  </g>
+</svg>
