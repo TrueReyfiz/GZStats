@@ -1,311 +1,140 @@
 import { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getPerfil, getPartidas } from '../services/api'
-
-const TIER_COLOR = {
-  IRON: 'text-slate-400',        BRONZE: 'text-amber-700',
-  SILVER: 'text-slate-300',      GOLD: 'text-amber-400',
-  PLATINUM: 'text-teal-400',     EMERALD: 'text-green-400',
-  DIAMOND: 'text-blue-400',      MASTER: 'text-purple-400',
-  GRANDMASTER: 'text-red-400',   CHALLENGER: 'text-yellow-300',
-  UNRANKED: 'text-slate-500',
-}
-
-const ROTAS = ['TOP', 'JUNGLE', 'MIDDLE', 'BOTTOM', 'UTILITY']
-const ROTA_LABEL = { TOP: 'Top', JUNGLE: 'JG', MIDDLE: 'Mid', BOTTOM: 'Bot', UTILITY: 'Sup' }
-
-function StatCard({ label, value, color = 'text-white', sub }) {
-  return (
-    <div className="bg-[#0d1117] border border-white/5 rounded-lg p-4">
-      <div className="text-xs uppercase tracking-widest text-slate-500 mb-1">{label}</div>
-      <div className={`text-2xl font-bold ${color}`}>{value ?? '—'}</div>
-      {sub && <div className="text-xs text-slate-600 mt-1">{sub}</div>}
-    </div>
-  )
-}
-
-function diffColor(val) {
-  if (val === null || val === undefined) return 'text-slate-500'
-  if (val >= 300)  return 'text-green-400'
-  if (val >= 0)    return 'text-slate-300'
-  if (val >= -300) return 'text-amber-400'
-  return 'text-red-400'
-}
-
-function fmtDiff(val, decimals = 0) {
-  if (val === null || val === undefined) return 'N/A'
-  const n = decimals > 0 ? val.toFixed(decimals) : Math.round(val)
-  return val >= 0 ? `+${n}` : `${n}`
-}
-
-function formatDate(iso) {
-  if (!iso) return ''
-  const d = new Date(iso)
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) +
-         ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
-
-function FilterBtn({ active, onClick, children }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1 text-xs font-medium rounded border transition-all ${
-        active
-          ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30'
-          : 'text-slate-400 border-white/10 hover:border-white/20'
-      }`}
-    >
-      {children}
-    </button>
-  )
-}
+import { TIER_HEX, ROTA_LABEL, fmtDiff, diffColor, SQUAD_COLORS } from '../lib/brand'
+import TierPill from '../components/TierPill'
+import Avatar from '../components/Avatar'
+import StatBox from '../components/StatBox'
+import MatchRow from '../components/MatchRow'
+import Chip from '../components/Chip'
 
 export default function Perfil() {
-  const { puuid }  = useParams()
-  const navigate   = useNavigate()
-  const [perfil,   setPerfil]   = useState(null)
+  const { puuid } = useParams()
+  const navigate = useNavigate()
+  const [perfil, setPerfil] = useState(null)
   const [partidas, setPartidas] = useState([])
-  const [loading,  setLoading]  = useState(true)
-
-  // Filtros
-  const [resultado, setResultado] = useState('todos')   // todos | vitoria | derrota
-  const [rotaFil,   setRotaFil]   = useState('todas')   // todas | TOP | JUNGLE | ...
-  const [campBusca, setCampBusca] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [resultado, setResultado] = useState('todos')
 
   useEffect(() => {
+    setLoading(true)
     Promise.all([getPerfil(puuid), getPartidas(puuid)])
-      .then(([p, m]) => { setPerfil(p.data); setPartidas(m.data) })
+      .then(([p, m]) => { setPerfil(p.data); setPartidas(m.data || []) })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [puuid])
 
-  const partidasFiltradas = useMemo(() => {
-    return partidas.filter(p => {
-      if (resultado === 'vitoria'  && !p.vitoria)  return false
-      if (resultado === 'derrota'  &&  p.vitoria)  return false
-      if (rotaFil !== 'todas'      && p.rota !== rotaFil) return false
-      if (campBusca && !p.campeao?.toLowerCase().includes(campBusca.toLowerCase())) return false
-      return true
-    })
-  }, [partidas, resultado, rotaFil, campBusca])
-
-  // Campeões únicos para sugestão
-  const campeoes = useMemo(() =>
-    [...new Set(partidas.map(p => p.campeao).filter(Boolean))].sort(),
-    [partidas]
+  const filtradas = useMemo(() =>
+    partidas.filter(p =>
+      resultado === 'todos' ? true :
+      resultado === 'vitoria' ? p.vitoria : !p.vitoria
+    ),
+    [partidas, resultado]
   )
 
-  // Rotas que o jogador realmente jogou
-  const rotasUsadas = useMemo(() =>
-    new Set(partidas.map(p => p.rota).filter(Boolean)),
-    [partidas]
-  )
+  if (loading) return <div className="py-20 text-center text-warm-4 font-bold">Carregando perfil…</div>
+  if (!perfil)  return <div className="py-20 text-center text-loss font-bold">Jogador não encontrado.</div>
 
-  if (loading) return <div className="text-center py-20 text-slate-500">Carregando perfil...</div>
-  if (!perfil)  return <div className="text-center py-20 text-red-400">Jogador não encontrado.</div>
+  const s = perfil.stats_medios || {}
+  const tierColor = TIER_HEX[perfil.tier] || '#64748b'
+  // We don't know the colorIdx here without the full squad — use a stable hash from puuid.
+  const colorIdx = perfil.puuid?.charCodeAt(2) % SQUAD_COLORS.length
+  const color = SQUAD_COLORS[colorIdx] || tierColor
 
-  const s         = perfil.stats_medios
-  const tierColor = TIER_COLOR[perfil.tier] ?? 'text-slate-400'
-
-  const vitoriasFiltradas = partidasFiltradas.filter(p => p.vitoria).length
-  const derrotasFiltradas = partidasFiltradas.length - vitoriasFiltradas
+  const v = filtradas.filter(p => p.vitoria).length
+  const d = filtradas.length - v
 
   return (
     <div className="py-8">
       <button
         onClick={() => navigate('/')}
-        className="text-xs text-slate-500 hover:text-slate-300 mb-4 flex items-center gap-1"
+        className="bg-transparent border-0 text-warm-3 hover:text-banana text-xs font-extrabold tracking-wide cursor-pointer pl-0 mb-4 inline-flex items-center gap-1.5"
       >
-        ← Voltar ao Ranking
+        ← Voltar pra Resenha
       </button>
 
-      {/* ── Header ── */}
-      <div className="bg-[#0d1117] border border-white/5 rounded-lg p-6 mb-6">
-        <div className="flex gap-4 items-center">
-          <div
-            className={`w-14 h-14 rounded-full bg-white/5 border-2 flex items-center justify-center font-bold text-xl ${tierColor}`}
-            style={{ borderColor: 'currentColor' }}
-          >
-            {perfil.riot_id?.[0]}
+      {/* Hero */}
+      <div className="bg-bg-1 rounded-lg p-6 mb-4 shadow-card border-2 border-bg-2 grid grid-cols-[110px_1fr_auto] gap-6 items-center">
+        <Avatar
+          name={perfil.riot_id}
+          color={color}
+          size={110}
+          badge={perfil.hot_streak ? { emoji: '🔥', title: 'Hot streak' } : null}
+        />
+        <div>
+          <h1 className="font-display text-[36px] text-cream m-0 -tracking-[0.5px]">
+            {perfil.riot_id}
+            <span className="text-warm-4 text-lg font-mono ml-1.5 tracking-normal">#{perfil.tag_line}</span>
+          </h1>
+          <div className="flex items-center gap-3 mt-2 flex-wrap">
+            <TierPill tier={perfil.tier} rank={perfil.rank} size="lg"/>
+            <span className="font-mono text-[13px] text-warm-3 font-bold">
+              {perfil.lp} LP
+              {perfil.rota_principal && ` · ${ROTA_LABEL[perfil.rota_principal] || perfil.rota_principal} main`}
+            </span>
           </div>
-          <div className="flex-1">
-            <div className="text-xl font-bold text-white">
-              {perfil.riot_id}
-              <span className="text-slate-500 text-sm font-normal ml-1">#{perfil.tag_line}</span>
-            </div>
-            <div className={`text-sm font-semibold mt-0.5 ${tierColor}`}>
-              {perfil.tier} {perfil.rank} · {perfil.lp} LP
-            </div>
-            <div className="text-xs text-slate-500 mt-1">
-              {perfil.wins}V {perfil.losses}D · {perfil.winrate_geral}% WR geral
-            </div>
+          <div className="text-[13px] text-warm-3 mt-2.5 font-bold">
+            {perfil.wins}V {perfil.losses}D · {perfil.winrate_geral}% WR geral · últimas {s.partidas_analisadas || 30} partidas
           </div>
-          {perfil.hot_streak && (
-            <div className="text-orange-400 text-sm font-semibold">🔥 Em sequência!</div>
-          )}
         </div>
+        {perfil.hot_streak && (
+          <div className="bg-gradient-to-br from-clay to-clay-2 text-bg-0 px-4 py-2 rounded-full font-display text-sm tracking-wide shadow-pill">
+            🔥 Em sequência!
+          </div>
+        )}
       </div>
 
-      {/* ── Stats ── */}
-      {s ? (
+      {/* Stat grids */}
+      {s.kda_medio != null ? (
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
-            <StatCard label="KDA Médio"    value={s.kda_medio}                  color="text-cyan-400"  sub={`últ. ${s.partidas_analisadas} partidas`} />
-            <StatCard label="CS / Min"     value={s.cspm_medio}                 color="text-amber-400" />
-            <StatCard label="Dano / Min"   value={Math.round(s.dpm_medio)}      color="text-green-400" />
-            <StatCard label="WR recente"   value={`${s.winrate_recente}%`}
-              color={s.winrate_recente >= 50 ? 'text-green-400' : 'text-red-400'}
-              sub={`WR geral: ${perfil.winrate_geral}%`}
+            <StatBox label="KDA Médio"   value={s.kda_medio}  color="#fbbf24" sub={`últimas ${s.partidas_analisadas || 30} partidas`}/>
+            <StatBox label="CS / Min"    value={s.cspm_medio} color="#fde68a"/>
+            <StatBox label="Dano / Min"  value={Math.round(s.dpm_medio)} color="#84cc16"/>
+            <StatBox label="WR recente"
+              value={`${s.winrate_recente}%`}
+              color={s.winrate_recente >= 50 ? '#84cc16' : '#ef4444'}
+              sub={`WR geral ${perfil.winrate_geral}%`}
             />
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <StatCard label="Kill Part."   value={`${s.kp_medio}%`}             color="text-purple-400" />
-            <StatCard label="Vision Score" value={s.visao_medio}                color="text-blue-400" />
-            <StatCard label="GD@15 Médio"  value={fmtDiff(s.gd15_medio)}
-              color={diffColor(s.gd15_medio)} sub="ouro vs oponente"
-            />
-            <StatCard label="CSD@15"       value={fmtDiff(s.csd15_medio, 1)}
-              color={diffColor(s.csd15_medio)} sub="CS vs oponente"
-            />
+            <StatBox label="Kill Part."  value={`${s.kp_medio}%`} color="#ec4899"/>
+            <StatBox label="Vision"      value={s.visao_medio} color="#60a5fa"/>
+            <StatBox label="GD@15"       value={fmtDiff(s.gd15_medio)} color={diffColor(s.gd15_medio)} sub="ouro vs oponente"/>
+            <StatBox label="CSD@15"      value={fmtDiff(s.csd15_medio, 1)} color={diffColor((s.csd15_medio || 0) * 100)} sub="CS vs oponente"/>
           </div>
         </>
       ) : (
-        <div className="bg-[#0d1117] border border-white/5 rounded-lg p-6 mb-6 text-center text-slate-500 text-sm">
+        <div className="bg-bg-1 border-2 border-bg-2 rounded-md p-6 mb-6 text-center text-warm-4 font-bold">
           Sem partidas registradas ainda. Aguarde a sincronização automática.
         </div>
       )}
 
-      {/* ── Filtros do Histórico ── */}
-      <div className="bg-[#0d1117] border border-white/5 rounded-lg p-4 mb-2 flex flex-col gap-3">
-
-        {/* Busca por campeão */}
-        <div className="relative">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
-          <input
-            type="text"
-            placeholder="Buscar campeão..."
-            value={campBusca}
-            onChange={e => setCampBusca(e.target.value)}
-            list="camp-list"
-            className="w-full bg-white/5 border border-white/10 rounded-lg pl-8 pr-4 py-2 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-cyan-400/50 transition-colors"
-          />
-          <datalist id="camp-list">
-            {campeoes.map(c => <option key={c} value={c} />)}
-          </datalist>
-          {campBusca && (
-            <button onClick={() => setCampBusca('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 text-xs">
-              ✕
-            </button>
-          )}
-        </div>
-
-        <div className="flex flex-wrap gap-4">
-          {/* Resultado */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-500 uppercase tracking-widest">Resultado</span>
-            <div className="flex gap-1">
-              <FilterBtn active={resultado === 'todos'}   onClick={() => setResultado('todos')}>Todos</FilterBtn>
-              <FilterBtn active={resultado === 'vitoria'} onClick={() => setResultado('vitoria')}>✅ Vitórias</FilterBtn>
-              <FilterBtn active={resultado === 'derrota'} onClick={() => setResultado('derrota')}>❌ Derrotas</FilterBtn>
-            </div>
-          </div>
-
-          {/* Rota */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs text-slate-500 uppercase tracking-widest">Rota</span>
-            <div className="flex gap-1 flex-wrap">
-              <FilterBtn active={rotaFil === 'todas'} onClick={() => setRotaFil('todas')}>Todas</FilterBtn>
-              {ROTAS.filter(r => rotasUsadas.has(r)).map(r => (
-                <FilterBtn key={r} active={rotaFil === r} onClick={() => setRotaFil(r)}>
-                  {ROTA_LABEL[r]}
-                </FilterBtn>
-              ))}
-            </div>
-          </div>
-        </div>
+      {/* Filtros */}
+      <div className="flex flex-wrap items-center gap-2 mb-2.5">
+        <span className="text-[11px] text-warm-4 font-extrabold uppercase tracking-[1px] mr-1">Resultado</span>
+        <Chip active={resultado==='todos'}   onClick={() => setResultado('todos')}>Todas</Chip>
+        <Chip active={resultado==='vitoria'} onClick={() => setResultado('vitoria')}>✅ Vitórias</Chip>
+        <Chip active={resultado==='derrota'} onClick={() => setResultado('derrota')}>❌ Derrotas</Chip>
       </div>
 
-      {/* ── Histórico ── */}
-      <div className="bg-[#0d1117] border border-white/5 rounded-lg overflow-hidden">
-        <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between">
-          <span className="text-xs uppercase tracking-widest text-slate-500">Histórico de Partidas</span>
-          <span className="text-xs text-slate-600">
-            {partidasFiltradas.length} partidas ·{' '}
-            <span className="text-green-400">{vitoriasFiltradas}V</span>
-            {' / '}
-            <span className="text-red-400">{derrotasFiltradas}D</span>
-            {partidasFiltradas.length > 0 && (
-              <span className="text-slate-500">
-                {' '}· {Math.round(vitoriasFiltradas / partidasFiltradas.length * 100)}% WR
-              </span>
-            )}
+      {/* Histórico */}
+      <div className="bg-bg-1 rounded-md border-2 border-bg-2 overflow-hidden shadow-card">
+        <div className="px-[18px] py-3.5 border-b-2 border-dashed border-warm-5/30 flex items-center justify-between">
+          <h3 className="font-display text-base text-cream m-0">📜 Histórico de partidas</h3>
+          <span className="text-xs text-warm-4 font-bold">
+            {filtradas.length} partidas · <span className="text-win">{v}V</span> / <span className="text-loss">{d}D</span>
           </span>
         </div>
-
-        {partidasFiltradas.length === 0 && (
-          <div className="px-4 py-8 text-center text-slate-600 text-sm">
-            Nenhuma partida com esses filtros.
+        {filtradas.slice(0, 30).map(p => <MatchRow key={p.match_id} partida={p}/>)}
+        {filtradas.length === 0 && (
+          <div className="py-10 text-center text-warm-4 font-bold">
+            🐒 Nenhuma partida com esse filtro.
           </div>
         )}
-
-        {partidasFiltradas.slice(0, 30).map(p => (
-          <div
-            key={p.match_id}
-            className="flex items-center gap-3 px-4 py-3 border-b border-white/5 hover:bg-white/[0.03] transition-colors"
-          >
-            <div className={`w-1 h-12 rounded-full flex-shrink-0 ${p.vitoria ? 'bg-green-400' : 'bg-red-400'}`} />
-
-            <div className="w-9 h-9 rounded bg-white/5 flex items-center justify-center text-xs font-bold text-amber-400 flex-shrink-0">
-              {p.campeao?.slice(0, 3).toUpperCase()}
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-white text-sm leading-tight">{p.campeao}</div>
-              <div className="text-xs text-slate-500 mt-0.5">
-                {p.rota ? (ROTA_LABEL[p.rota] ?? p.rota) : '—'}
-                {' · '}{p.duracao_min}min
-                {p.data ? ` · ${formatDate(p.data)}` : ''}
-              </div>
-            </div>
-
-            {/* KDA */}
-            <div className="text-sm text-center w-20 flex-shrink-0">
-              <div>
-                <span className="text-green-400">{p.kills}</span>
-                <span className="text-slate-600">/</span>
-                <span className="text-red-400">{p.deaths}</span>
-                <span className="text-slate-600">/</span>
-                <span className="text-white">{p.assists}</span>
-              </div>
-              <div className="text-xs text-slate-500">KDA {p.kda}</div>
-            </div>
-
-            {/* CS */}
-            <div className="text-right text-sm w-16 flex-shrink-0 hidden sm:block">
-              <div className="text-white font-semibold">{p.cs} CS</div>
-              <div className="text-xs text-slate-500">{p.cspm}/min</div>
-            </div>
-
-            {/* GD@15 */}
-            <div className={`text-right text-xs w-14 flex-shrink-0 hidden md:block font-semibold ${diffColor(p.gd15)}`}>
-              {p.gd15 !== null && p.gd15 !== undefined ? fmtDiff(p.gd15) : '—'}
-              <div className="text-slate-600 font-normal">GD@15</div>
-            </div>
-
-            {/* KP% */}
-            <div className="text-right text-xs w-12 flex-shrink-0 hidden lg:block">
-              <div className="text-purple-400 font-semibold">
-                {p.kill_participation != null ? `${Math.round(p.kill_participation)}%` : '—'}
-              </div>
-              <div className="text-slate-600">KP</div>
-            </div>
-          </div>
-        ))}
-
-        {partidasFiltradas.length > 30 && (
-          <div className="px-4 py-3 text-center text-xs text-slate-600">
-            Mostrando 30 de {partidasFiltradas.length} partidas
+        {filtradas.length > 30 && (
+          <div className="px-[18px] py-3 text-center text-xs text-warm-4 font-bold">
+            Mostrando 30 de {filtradas.length} partidas
           </div>
         )}
       </div>
